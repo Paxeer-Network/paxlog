@@ -1,7 +1,7 @@
-// Package seilog provides structured logging with per-logger level control,
+// Package paxlog provides structured logging with per-logger level control,
 // built on top of [log/slog].
 //
-// seilog adds two things standard slog does not offer out of the box:
+// paxlog adds two things standard slog does not offer out of the box:
 // hierarchical logger naming and the ability to change log levels at runtime
 // without restarting the process. Every logger created through [NewLogger]
 // returns a plain [*slog.Logger], so callers use the standard library API
@@ -9,12 +9,12 @@
 //
 // # Quick Start
 //
-//	var log = seilog.NewLogger("myapp", "db")
+//	var log = paxlog.NewLogger("myapp", "db")
 //
 //	func main() {
 //		log.Info("connected", "host", "localhost")
-//		seilog.SetLevel("myapp/*", slog.LevelDebug) // turn on debug for direct children of myapp
-//		seilog.SetLevel("myapp/**", slog.LevelDebug) // turn on debug for all children of myapp
+//		paxlog.SetLevel("myapp/*", slog.LevelDebug) // turn on debug for direct children of myapp
+//		paxlog.SetLevel("myapp/**", slog.LevelDebug) // turn on debug for all children of myapp
 //	}
 //
 // # Logger Naming
@@ -23,9 +23,9 @@
 // is to mirror your module or package structure so that names are globally
 // unique, predictable, and easy to target with glob patterns:
 //
-//	seilog.NewLogger("myapp")               // top-level
-//	seilog.NewLogger("myapp", "db")         // → "myapp/db"
-//	seilog.NewLogger("myapp", "db", "pool") // → "myapp/db/pool"
+//	paxlog.NewLogger("myapp")               // top-level
+//	paxlog.NewLogger("myapp", "db")         // → "myapp/db"
+//	paxlog.NewLogger("myapp", "db", "pool") // → "myapp/db/pool"
 //
 // Each segment must match the pattern [a-z0-9]+(-[a-z0-9]+)*. This is
 // enforced at creation time via panic. The constraint exists for three
@@ -52,12 +52,12 @@
 // Levels can be changed at runtime per logger or by pattern, and queried
 // for diagnostics:
 //
-//	seilog.SetLevel("myapp/db", slog.LevelDebug)  // exact match
-//	seilog.SetLevel("myapp/*", slog.LevelDebug)    // direct children of myapp
-//	seilog.SetLevel("myapp/*/*", slog.LevelWarn)   // grandchildren of myapp only
-//	seilog.SetLevel("myapp/**", slog.LevelDebug)   // myapp and ALL descendants
+//	paxlog.SetLevel("myapp/db", slog.LevelDebug)  // exact match
+//	paxlog.SetLevel("myapp/*", slog.LevelDebug)    // direct children of myapp
+//	paxlog.SetLevel("myapp/*/*", slog.LevelWarn)   // grandchildren of myapp only
+//	paxlog.SetLevel("myapp/**", slog.LevelDebug)   // myapp and ALL descendants
 //
-//	lvl, ok := seilog.GetLevel("myapp/db")         // query current level
+//	lvl, ok := paxlog.GetLevel("myapp/db")         // query current level
 //
 // Glob patterns follow [path.Match] semantics. Each "*" matches a single
 // path segment and does not cross "/" boundaries:
@@ -66,7 +66,7 @@
 //	"myapp/*/*"  matches "myapp/db/pool"    but NOT "myapp/db"
 //	"*/db"       matches "myapp/db"         but NOT "myapp/v2/db"
 //
-// seilog extends standard glob matching with two special patterns:
+// paxlog extends standard glob matching with two special patterns:
 //
 //   - "/**" suffix — recursive prefix match. "myapp/**" matches "myapp"
 //     itself and every logger whose name starts with "myapp/" at any depth.
@@ -84,23 +84,23 @@
 // read during package init and cannot be changed afterward; the handler is
 // captured by each logger at creation time.
 //
-//	SEI_LOG_LEVEL      — Default level: debug, info, warn, error (default: info).
-//	SEI_LOG_FORMAT     — Output format: json or text (default: text).
-//	SEI_LOG_OUTPUT     — Destination: stdout, stderr, or an absolute file path
+//	PAX_LOG_LEVEL      — Default level: debug, info, warn, error (default: info).
+//	PAX_LOG_FORMAT     — Output format: json or text (default: text).
+//	PAX_LOG_OUTPUT     — Destination: stdout, stderr, or an absolute file path
 //	                     (default: stdout). File paths must not contain ".."
 //	                     components. Files are opened with mode 0600 and
 //	                     O_APPEND for atomic POSIX writes. The operator is
 //	                     responsible for ensuring the path is trusted.
-//	                     seilog does not perform log rotation — pair with an
+//	                     paxlog does not perform log rotation — pair with an
 //	                     external tool such as logrotate when writing to files.
-//	SEI_LOG_ADD_SOURCE — Include source file and line in output (default: false).
+//	PAX_LOG_ADD_SOURCE — Include source file and line in output (default: false).
 //
-// When SEI_LOG_OUTPUT points to a file, call [Close] during graceful
+// When PAX_LOG_OUTPUT points to a file, call [Close] during graceful
 // shutdown to flush and close the file descriptor. Close is safe to call
 // multiple times and is a no-op for stdout and stderr. If Close is not
 // called, the operating system will close the descriptor on process exit,
 // but buffered data may be lost.
-package seilog
+package paxlog
 
 import (
 	"context"
@@ -133,17 +133,17 @@ var (
 )
 
 func init() {
-	defaultLevel.Set(parseLevel(os.Getenv("SEI_LOG_LEVEL"), slog.LevelInfo))
+	defaultLevel.Set(parseLevel(os.Getenv("PAX_LOG_LEVEL"), slog.LevelInfo))
 
 	var err error
-	output, err = openOutput(os.Getenv("SEI_LOG_OUTPUT"))
+	output, err = openOutput(os.Getenv("PAX_LOG_OUTPUT"))
 	if err != nil {
 		output = nopCloser{os.Stdout}
-		_, _ = fmt.Fprintf(os.Stderr, "seilog: falling back to stdout: failed to open log output: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "paxlog: falling back to stdout: failed to open log output: %v\n", err)
 	}
 
-	addSource = parseBool(os.Getenv("SEI_LOG_ADD_SOURCE"), false)
-	h := newHandler(os.Getenv("SEI_LOG_FORMAT"), output)
+	addSource = parseBool(os.Getenv("PAX_LOG_ADD_SOURCE"), false)
+	h := newHandler(os.Getenv("PAX_LOG_FORMAT"), output)
 	handler.Store(&h)
 }
 
@@ -192,13 +192,13 @@ func openLogFile(p string) (io.WriteCloser, error) {
 
 	// Reject relative paths — only absolute paths are accepted.
 	if !filepath.IsAbs(cleaned) {
-		return nil, fmt.Errorf("seilog: log file path must be absolute, got %q", p)
+		return nil, fmt.Errorf("paxlog: log file path must be absolute, got %q", p)
 	}
 
 	// Reject any ".." components after cleaning to prevent path traversal.
 	for _, part := range strings.Split(cleaned, string(filepath.Separator)) {
 		if part == ".." {
-			return nil, fmt.Errorf("seilog: log file path must not contain '..', got %q", p)
+			return nil, fmt.Errorf("paxlog: log file path must not contain '..', got %q", p)
 		}
 	}
 
@@ -238,10 +238,10 @@ func newHandler(format string, w io.Writer) slog.Handler {
 // convention: lowercase alphanumerics and hyphens only.
 func validateSegment(seg string) {
 	if seg == "" {
-		panic("seilog: logger name segment must not be empty")
+		panic("paxlog: logger name segment must not be empty")
 	}
 	if !validSegment.MatchString(seg) {
-		panic(fmt.Sprintf("seilog: invalid logger name segment %q: must match [a-z0-9]+(-[a-z0-9]+)*", seg))
+		panic(fmt.Sprintf("paxlog: invalid logger name segment %q: must match [a-z0-9]+(-[a-z0-9]+)*", seg))
 	}
 }
 
@@ -249,13 +249,13 @@ func validateSegment(seg string) {
 //
 // The returned [*slog.Logger] is a standard library logger — callers use
 // the normal slog API (Info, Debug, With, WithGroup, etc.) with no
-// seilog-specific wrapper.
+// paxlog-specific wrapper.
 //
 // Sub-segments are joined with "/" to form a hierarchical name:
 //
-//	seilog.NewLogger("myapp")                // "myapp"
-//	seilog.NewLogger("myapp", "db")          // "myapp/db"
-//	seilog.NewLogger("myapp", "db", "pool")  // "myapp/db/pool"
+//	paxlog.NewLogger("myapp")                // "myapp"
+//	paxlog.NewLogger("myapp", "db")          // "myapp/db"
+//	paxlog.NewLogger("myapp", "db", "pool")  // "myapp/db/pool"
 //
 // Each segment must be lowercase alphanumerics and hyphens only, matching
 // the pattern [a-z0-9]+(-[a-z0-9]+)*. This is enforced at creation time
@@ -280,7 +280,7 @@ func validateSegment(seg string) {
 // NewLogger is safe for concurrent use. It is intended to be called at
 // package init time and the result stored in a package-level variable:
 //
-//	var log = seilog.NewLogger("myapp", "db")
+//	var log = paxlog.NewLogger("myapp", "db")
 func NewLogger(name string, subs ...string) *slog.Logger {
 	validateSegment(name)
 	for _, s := range subs {
@@ -320,20 +320,20 @@ func NewLogger(name string, subs ...string) *slog.Logger {
 // The name argument can be an exact logger name, a glob pattern, or a
 // recursive prefix:
 //
-//	seilog.SetLevel("myapp/db", slog.LevelDebug)   // exact match
-//	seilog.SetLevel("myapp/*", slog.LevelDebug)     // direct children only
-//	seilog.SetLevel("myapp/*/*", slog.LevelWarn)    // grandchildren only
-//	seilog.SetLevel("myapp/**", slog.LevelDebug)    // myapp and all descendants
+//	paxlog.SetLevel("myapp/db", slog.LevelDebug)   // exact match
+//	paxlog.SetLevel("myapp/*", slog.LevelDebug)     // direct children only
+//	paxlog.SetLevel("myapp/*/*", slog.LevelWarn)    // grandchildren only
+//	paxlog.SetLevel("myapp/**", slog.LevelDebug)    // myapp and all descendants
 //
 // Glob patterns follow [path.Match] semantics. Each "*" in a glob matches
 // a single path segment and does not cross "/" boundaries.
 //
-// The "/**" suffix is a seilog-specific extension that matches the prefix
+// The "/**" suffix is a paxlog-specific extension that matches the prefix
 // logger itself and every logger whose name starts with that prefix
 // followed by "/". For example, "myapp/**" matches "myapp", "myapp/db",
 // and "myapp/db/pool".
 //
-// As another seilog-specific extension, passing "*" alone matches every
+// As another paxlog-specific extension, passing "*" alone matches every
 // registered logger regardless of depth — this bypasses [path.Match] and
 // iterates the full registry.
 //
@@ -421,7 +421,7 @@ func SetLevel(name string, level slog.Level) int {
 //
 // GetLevel is intended for admin endpoints, diagnostics, and tests:
 //
-//	if lvl, ok := seilog.GetLevel("myapp/db"); ok {
+//	if lvl, ok := paxlog.GetLevel("myapp/db"); ok {
 //		fmt.Printf("myapp/db is at %s\n", lvl)
 //	}
 //
@@ -481,7 +481,7 @@ func ListLoggers() []string {
 	return result
 }
 
-// Close closes the log output opened via the SEI_LOG_OUTPUT environment
+// Close closes the log output opened via the PAX_LOG_OUTPUT environment
 // variable. It is a no-op when output is stdout or stderr.
 //
 // Call Close during graceful shutdown to ensure the file descriptor is
@@ -492,7 +492,7 @@ func ListLoggers() []string {
 // Typical usage:
 //
 //	func main() {
-//		defer seilog.Close()
+//		defer paxlog.Close()
 //		// ...
 //	}
 //

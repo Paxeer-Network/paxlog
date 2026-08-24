@@ -1,4 +1,4 @@
-package seilog
+package paxlog
 
 import (
 	"context"
@@ -33,9 +33,9 @@ func (h *discardHandler) WithGroup(name string) slog.Handler {
 	return &discardHandler{level: h.level, attrs: h.attrs, group: name}
 }
 
-// setupSeilog configures seilog to write JSON to io.Discard and returns
+// setupPaxlog configures paxlog to write JSON to io.Discard and returns
 // a cleanup function. It resets global state so benchmarks are isolated.
-func setupSeilog(b *testing.B) func() {
+func setupPaxlog(b *testing.B) func() {
 	b.Helper()
 	mu.Lock()
 	// Save and reset global state.
@@ -70,8 +70,8 @@ func newStdlibLogger() *slog.Logger {
 // Benchmark: Info with simple string attrs (the most common case)
 // ---------------------------------------------------------------------------
 
-func BenchmarkInfo_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkInfo_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "info")
 
@@ -96,8 +96,8 @@ func BenchmarkInfo_Stdlib(b *testing.B) {
 // Benchmark: Debug when level is Info (disabled path — should be near-zero)
 // ---------------------------------------------------------------------------
 
-func BenchmarkDisabledLevel_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkDisabledLevel_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "disabled")
 	// Default level is Info, so Debug calls should be filtered.
@@ -125,8 +125,8 @@ func BenchmarkDisabledLevel_Stdlib(b *testing.B) {
 // Benchmark: Structured attrs with slog.String/slog.Int (typed API)
 // ---------------------------------------------------------------------------
 
-func BenchmarkTypedAttrs_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkTypedAttrs_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "typed")
 
@@ -161,8 +161,8 @@ func BenchmarkTypedAttrs_Stdlib(b *testing.B) {
 // Benchmark: With() pre-bound attrs (logger created once, used many times)
 // ---------------------------------------------------------------------------
 
-func BenchmarkWithAttrs_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkWithAttrs_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "with").With("request-id", "abc-123", "user-id", 42)
 
@@ -187,8 +187,8 @@ func BenchmarkWithAttrs_Stdlib(b *testing.B) {
 // Benchmark: Parallel logging from multiple goroutines
 // ---------------------------------------------------------------------------
 
-func BenchmarkParallel_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkParallel_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "parallel")
 
@@ -217,8 +217,8 @@ func BenchmarkParallel_Stdlib(b *testing.B) {
 // Benchmark: Mixed read/write contention — logging while SetLevel runs
 // ---------------------------------------------------------------------------
 
-func BenchmarkContention_Seilog(b *testing.B) {
-	cleanup := setupSeilog(b)
+func BenchmarkContention_Paxlog(b *testing.B) {
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	log := NewLogger("bench", "contention")
 
@@ -261,9 +261,9 @@ func BenchmarkContention_Seilog(b *testing.B) {
 // Benchmark: NewLogger creation (cold vs warm — registry hit)
 // ---------------------------------------------------------------------------
 
-func BenchmarkNewLogger_Cold_Seilog(b *testing.B) {
+func BenchmarkNewLogger_Cold_Paxlog(b *testing.B) {
 	// Each iteration creates a unique logger name (registry miss).
-	cleanup := setupSeilog(b)
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 
 	names := make([]string, b.N)
@@ -281,9 +281,9 @@ func BenchmarkNewLogger_Cold_Seilog(b *testing.B) {
 	}
 }
 
-func BenchmarkNewLogger_Warm_Seilog(b *testing.B) {
+func BenchmarkNewLogger_Warm_Paxlog(b *testing.B) {
 	// Logger already registered — pure RLock path.
-	cleanup := setupSeilog(b)
+	cleanup := setupPaxlog(b)
 	defer cleanup()
 	_ = NewLogger("bench", "warm") // seed
 
@@ -298,7 +298,7 @@ func BenchmarkNewLogger_Warm_Seilog(b *testing.B) {
 // Benchmark: Text handler comparison
 // ---------------------------------------------------------------------------
 
-func BenchmarkInfoText_Seilog(b *testing.B) {
+func BenchmarkInfoText_Paxlog(b *testing.B) {
 	mu.Lock()
 	oldRegistry := registry
 	oldHandler := handler.Load()

@@ -1,4 +1,4 @@
-package seilog_test
+package paxlog_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/sei-protocol/seilog"
+	"github.com/paxeer-network/paxlog"
 )
 
 // --------------------------------------------------------------------------
@@ -22,19 +22,19 @@ import (
 // buffer so we can inspect log output. Returns the buffer and a cleanup
 // function that restores the previous state.
 //
-// Because seilog captures the handler at NewLogger time, loggers must be
+// Because paxlog captures the handler at NewLogger time, loggers must be
 // created AFTER calling captureJSON.
 func captureJSON(t *testing.T) *bytes.Buffer {
 	t.Helper()
-	t.Setenv("SEI_LOG_FORMAT", "json")
-	t.Setenv("SEI_LOG_OUTPUT", "stdout")
+	t.Setenv("PAX_LOG_FORMAT", "json")
+	t.Setenv("PAX_LOG_OUTPUT", "stdout")
 	// We can't swap the handler directly (unexported), so we rely on
 	// the fact that tests create fresh loggers that pick up the init handler.
 	// For output capture we use a file-based approach instead.
 	return nil // placeholder — we use captureFile below
 }
 
-// captureFile sets SEI_LOG_OUTPUT to a temp file, re-inits isn't possible,
+// captureFile sets PAX_LOG_OUTPUT to a temp file, re-inits isn't possible,
 // so instead we create loggers pointing at a buffer via slog directly and
 // compare behavior. For true integration tests we parse the temp file.
 //
@@ -91,37 +91,37 @@ func mustPanic(t *testing.T, substr string, fn func()) {
 // --------------------------------------------------------------------------
 
 func TestNewLogger_SimpleName(t *testing.T) {
-	log := seilog.NewLogger("myapp")
+	log := paxlog.NewLogger("myapp")
 	if log == nil {
 		t.Fatal("NewLogger returned nil")
 	}
 }
 
 func TestNewLogger_SubSegments(t *testing.T) {
-	log := seilog.NewLogger("myapp", "db", "pool")
+	log := paxlog.NewLogger("myapp", "db", "pool")
 	if log == nil {
 		t.Fatal("NewLogger returned nil")
 	}
 	// Verify the logger name appears in ListLoggers.
 	found := false
-	for _, name := range seilog.ListLoggers() {
+	for _, name := range paxlog.ListLoggers() {
 		if name == "myapp/db/pool" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected 'myapp/db/pool' in ListLoggers, got %v", seilog.ListLoggers())
+		t.Errorf("expected 'myapp/db/pool' in ListLoggers, got %v", paxlog.ListLoggers())
 	}
 }
 
 func TestNewLogger_SharedLevel(t *testing.T) {
 	// Two loggers with the same name should share a level.
-	_ = seilog.NewLogger("shared-test")
-	_ = seilog.NewLogger("shared-test")
+	_ = paxlog.NewLogger("shared-test")
+	_ = paxlog.NewLogger("shared-test")
 
 	// SetLevel should affect both — returns 1 because it's the same LevelVar.
-	n := seilog.SetLevel("shared-test", slog.LevelDebug)
+	n := paxlog.SetLevel("shared-test", slog.LevelDebug)
 	if n != 1 {
 		t.Errorf("expected SetLevel to match 1, got %d", n)
 	}
@@ -129,73 +129,73 @@ func TestNewLogger_SharedLevel(t *testing.T) {
 
 func TestNewLogger_PanicOnEmptyName(t *testing.T) {
 	mustPanic(t, "must not be empty", func() {
-		seilog.NewLogger("")
+		paxlog.NewLogger("")
 	})
 }
 
 func TestNewLogger_PanicOnEmptySubSegment(t *testing.T) {
 	mustPanic(t, "must not be empty", func() {
-		seilog.NewLogger("myapp", "")
+		paxlog.NewLogger("myapp", "")
 	})
 }
 
 func TestNewLogger_PanicOnUppercase(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("MyApp")
+		paxlog.NewLogger("MyApp")
 	})
 }
 
 func TestNewLogger_PanicOnSpaces(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("my app")
+		paxlog.NewLogger("my app")
 	})
 }
 
 func TestNewLogger_PanicOnSlashInSegment(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("my/app")
+		paxlog.NewLogger("my/app")
 	})
 }
 
 func TestNewLogger_PanicOnUnderscore(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("my_app")
+		paxlog.NewLogger("my_app")
 	})
 }
 
 func TestNewLogger_PanicOnLeadingHyphen(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("-myapp")
+		paxlog.NewLogger("-myapp")
 	})
 }
 
 func TestNewLogger_PanicOnTrailingHyphen(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("myapp-")
+		paxlog.NewLogger("myapp-")
 	})
 }
 
 func TestNewLogger_PanicOnDoubleHyphen(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("my--app")
+		paxlog.NewLogger("my--app")
 	})
 }
 
 func TestNewLogger_PanicOnNewline(t *testing.T) {
 	mustPanic(t, "invalid logger name segment", func() {
-		seilog.NewLogger("my\napp")
+		paxlog.NewLogger("my\napp")
 	})
 }
 
 func TestNewLogger_ValidHyphenatedName(t *testing.T) {
-	log := seilog.NewLogger("http-server")
+	log := paxlog.NewLogger("http-server")
 	if log == nil {
 		t.Fatal("NewLogger returned nil for valid hyphenated name")
 	}
 }
 
 func TestNewLogger_ValidNumericName(t *testing.T) {
-	log := seilog.NewLogger("v2")
+	log := paxlog.NewLogger("v2")
 	if log == nil {
 		t.Fatal("NewLogger returned nil for valid numeric name")
 	}
@@ -206,14 +206,14 @@ func TestNewLogger_ValidNumericName(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestSetLevel_ExactMatch(t *testing.T) {
-	log := seilog.NewLogger("sl-exact")
+	log := paxlog.NewLogger("sl-exact")
 
 	// Default is Info — Debug should be disabled.
 	if log.Enabled(nil, slog.LevelDebug) {
 		t.Error("expected Debug disabled at default Info level")
 	}
 
-	n := seilog.SetLevel("sl-exact", slog.LevelDebug)
+	n := paxlog.SetLevel("sl-exact", slog.LevelDebug)
 	if n != 1 {
 		t.Errorf("expected 1 match, got %d", n)
 	}
@@ -223,18 +223,18 @@ func TestSetLevel_ExactMatch(t *testing.T) {
 }
 
 func TestSetLevel_NoMatch(t *testing.T) {
-	n := seilog.SetLevel("nonexistent-logger-xyz", slog.LevelDebug)
+	n := paxlog.SetLevel("nonexistent-logger-xyz", slog.LevelDebug)
 	if n != 0 {
 		t.Errorf("expected 0 matches for nonexistent logger, got %d", n)
 	}
 }
 
 func TestSetLevel_GlobChildren(t *testing.T) {
-	_ = seilog.NewLogger("glob-parent", "child1")
-	_ = seilog.NewLogger("glob-parent", "child2")
-	_ = seilog.NewLogger("glob-parent", "child1", "grandchild")
+	_ = paxlog.NewLogger("glob-parent", "child1")
+	_ = paxlog.NewLogger("glob-parent", "child2")
+	_ = paxlog.NewLogger("glob-parent", "child1", "grandchild")
 
-	n := seilog.SetLevel("glob-parent/*", slog.LevelDebug)
+	n := paxlog.SetLevel("glob-parent/*", slog.LevelDebug)
 	// Should match child1, child2 but NOT grandchild (path.Match "*" doesn't cross "/").
 	if n != 2 {
 		t.Errorf("expected 2 matches for glob-parent/*, got %d", n)
@@ -242,11 +242,11 @@ func TestSetLevel_GlobChildren(t *testing.T) {
 }
 
 func TestSetLevel_GlobGrandchildren(t *testing.T) {
-	_ = seilog.NewLogger("glob2", "a", "x")
-	_ = seilog.NewLogger("glob2", "b", "y")
-	_ = seilog.NewLogger("glob2", "c")
+	_ = paxlog.NewLogger("glob2", "a", "x")
+	_ = paxlog.NewLogger("glob2", "b", "y")
+	_ = paxlog.NewLogger("glob2", "c")
 
-	n := seilog.SetLevel("glob2/*/*", slog.LevelWarn)
+	n := paxlog.SetLevel("glob2/*/*", slog.LevelWarn)
 	// Should match a/x and b/y but not c.
 	if n != 2 {
 		t.Errorf("expected 2 matches for glob2/*/*, got %d", n)
@@ -255,21 +255,21 @@ func TestSetLevel_GlobGrandchildren(t *testing.T) {
 
 func TestSetLevel_StarAll(t *testing.T) {
 	// Create a few loggers, then set all to Warn.
-	_ = seilog.NewLogger("star1")
-	_ = seilog.NewLogger("star2", "sub")
+	_ = paxlog.NewLogger("star1")
+	_ = paxlog.NewLogger("star2", "sub")
 
-	n := seilog.SetLevel("*", slog.LevelWarn)
+	n := paxlog.SetLevel("*", slog.LevelWarn)
 	// Should match all registered loggers (at least these two plus others from other tests).
 	if n < 2 {
 		t.Errorf("expected at least 2 matches for *, got %d", n)
 	}
 
 	// Reset so other tests aren't affected.
-	seilog.SetLevel("*", slog.LevelInfo)
+	paxlog.SetLevel("*", slog.LevelInfo)
 }
 
 func TestSetLevel_BadPattern(t *testing.T) {
-	n := seilog.SetLevel("[invalid", slog.LevelDebug)
+	n := paxlog.SetLevel("[invalid", slog.LevelDebug)
 	if n != 0 {
 		t.Errorf("expected 0 for bad pattern, got %d", n)
 	}
@@ -281,17 +281,17 @@ func TestSetLevel_BadPattern(t *testing.T) {
 
 func TestSetLevel_RecursiveMatchesAll(t *testing.T) {
 	// Create a three-level hierarchy including the root.
-	_ = seilog.NewLogger("rec")
-	_ = seilog.NewLogger("rec", "db")
-	_ = seilog.NewLogger("rec", "db", "pool")
-	_ = seilog.NewLogger("rec", "db", "pool", "conn")
-	_ = seilog.NewLogger("rec", "api")
+	_ = paxlog.NewLogger("rec")
+	_ = paxlog.NewLogger("rec", "db")
+	_ = paxlog.NewLogger("rec", "db", "pool")
+	_ = paxlog.NewLogger("rec", "db", "pool", "conn")
+	_ = paxlog.NewLogger("rec", "api")
 
 	// Reset all to Info first.
-	seilog.SetLevel("rec/**", slog.LevelInfo)
+	paxlog.SetLevel("rec/**", slog.LevelInfo)
 
 	// Now set the whole subtree to Debug.
-	n := seilog.SetLevel("rec/**", slog.LevelDebug)
+	n := paxlog.SetLevel("rec/**", slog.LevelDebug)
 
 	// Should match: rec, rec/db, rec/db/pool, rec/db/pool/conn, rec/api = 5
 	if n != 5 {
@@ -300,7 +300,7 @@ func TestSetLevel_RecursiveMatchesAll(t *testing.T) {
 
 	// Verify each logger got the level.
 	for _, name := range []string{"rec", "rec/db", "rec/db/pool", "rec/db/pool/conn", "rec/api"} {
-		lvl, ok := seilog.GetLevel(name)
+		lvl, ok := paxlog.GetLevel(name)
 		if !ok {
 			t.Errorf("logger %q not found", name)
 			continue
@@ -313,15 +313,15 @@ func TestSetLevel_RecursiveMatchesAll(t *testing.T) {
 
 func TestSetLevel_RecursiveMatchesPrefix(t *testing.T) {
 	// Only the rec2/db subtree should be affected, not rec2/api.
-	_ = seilog.NewLogger("rec2", "db")
-	_ = seilog.NewLogger("rec2", "db", "pool")
-	_ = seilog.NewLogger("rec2", "api")
+	_ = paxlog.NewLogger("rec2", "db")
+	_ = paxlog.NewLogger("rec2", "db", "pool")
+	_ = paxlog.NewLogger("rec2", "api")
 
 	// Set everything to Info.
-	seilog.SetLevel("rec2/**", slog.LevelInfo)
+	paxlog.SetLevel("rec2/**", slog.LevelInfo)
 
 	// Now target only rec2/db subtree.
-	n := seilog.SetLevel("rec2/db/**", slog.LevelDebug)
+	n := paxlog.SetLevel("rec2/db/**", slog.LevelDebug)
 
 	// Should match: rec2/db, rec2/db/pool = 2
 	if n != 2 {
@@ -330,14 +330,14 @@ func TestSetLevel_RecursiveMatchesPrefix(t *testing.T) {
 
 	// rec2/db and rec2/db/pool should be Debug.
 	for _, name := range []string{"rec2/db", "rec2/db/pool"} {
-		lvl, _ := seilog.GetLevel(name)
+		lvl, _ := paxlog.GetLevel(name)
 		if lvl != slog.LevelDebug {
 			t.Errorf("expected %q at Debug, got %s", name, lvl)
 		}
 	}
 
 	// rec2/api should still be Info.
-	lvl, _ := seilog.GetLevel("rec2/api")
+	lvl, _ := paxlog.GetLevel("rec2/api")
 	if lvl != slog.LevelInfo {
 		t.Errorf("expected rec2/api at Info, got %s", lvl)
 	}
@@ -345,17 +345,17 @@ func TestSetLevel_RecursiveMatchesPrefix(t *testing.T) {
 
 func TestSetLevel_RecursiveIncludesSelf(t *testing.T) {
 	// The prefix logger itself should be included.
-	_ = seilog.NewLogger("rec3")
-	_ = seilog.NewLogger("rec3", "child")
+	_ = paxlog.NewLogger("rec3")
+	_ = paxlog.NewLogger("rec3", "child")
 
-	seilog.SetLevel("rec3/**", slog.LevelError)
+	paxlog.SetLevel("rec3/**", slog.LevelError)
 
-	lvl, _ := seilog.GetLevel("rec3")
+	lvl, _ := paxlog.GetLevel("rec3")
 	if lvl != slog.LevelError {
 		t.Errorf("expected rec3 itself at Error, got %s", lvl)
 	}
 
-	lvl, _ = seilog.GetLevel("rec3/child")
+	lvl, _ = paxlog.GetLevel("rec3/child")
 	if lvl != slog.LevelError {
 		t.Errorf("expected rec3/child at Error, got %s", lvl)
 	}
@@ -364,13 +364,13 @@ func TestSetLevel_RecursiveIncludesSelf(t *testing.T) {
 func TestSetLevel_RecursiveNoFalsePrefix(t *testing.T) {
 	// "rec4/**" should NOT match "rec4x" or "rec4x/child" — only exact
 	// prefix followed by "/" or the prefix itself.
-	_ = seilog.NewLogger("rec4")
-	_ = seilog.NewLogger("rec4x")
-	_ = seilog.NewLogger("rec4x", "child")
+	_ = paxlog.NewLogger("rec4")
+	_ = paxlog.NewLogger("rec4x")
+	_ = paxlog.NewLogger("rec4x", "child")
 
-	seilog.SetLevel("*", slog.LevelInfo) // reset all
+	paxlog.SetLevel("*", slog.LevelInfo) // reset all
 
-	n := seilog.SetLevel("rec4/**", slog.LevelDebug)
+	n := paxlog.SetLevel("rec4/**", slog.LevelDebug)
 
 	// Should match only "rec4" = 1.
 	if n != 1 {
@@ -378,14 +378,14 @@ func TestSetLevel_RecursiveNoFalsePrefix(t *testing.T) {
 	}
 
 	// rec4x should still be Info.
-	lvl, _ := seilog.GetLevel("rec4x")
+	lvl, _ := paxlog.GetLevel("rec4x")
 	if lvl != slog.LevelInfo {
 		t.Errorf("expected rec4x at Info (not matched), got %s", lvl)
 	}
 }
 
 func TestSetLevel_RecursiveNoMatch(t *testing.T) {
-	n := seilog.SetLevel("nonexistent-xyz/**", slog.LevelDebug)
+	n := paxlog.SetLevel("nonexistent-xyz/**", slog.LevelDebug)
 	if n != 0 {
 		t.Errorf("expected 0 matches for nonexistent prefix, got %d", n)
 	}
@@ -396,10 +396,10 @@ func TestSetLevel_RecursiveNoMatch(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestGetLevel_Exists(t *testing.T) {
-	_ = seilog.NewLogger("gl-exists")
-	seilog.SetLevel("gl-exists", slog.LevelWarn)
+	_ = paxlog.NewLogger("gl-exists")
+	paxlog.SetLevel("gl-exists", slog.LevelWarn)
 
-	lvl, ok := seilog.GetLevel("gl-exists")
+	lvl, ok := paxlog.GetLevel("gl-exists")
 	if !ok {
 		t.Fatal("expected ok=true for registered logger")
 	}
@@ -409,35 +409,35 @@ func TestGetLevel_Exists(t *testing.T) {
 }
 
 func TestGetLevel_NotFound(t *testing.T) {
-	_, ok := seilog.GetLevel("gl-nonexistent-xyz")
+	_, ok := paxlog.GetLevel("gl-nonexistent-xyz")
 	if ok {
 		t.Error("expected ok=false for unregistered logger")
 	}
 }
 
 func TestGetLevel_ReflectsRuntimeChange(t *testing.T) {
-	_ = seilog.NewLogger("gl-runtime")
+	_ = paxlog.NewLogger("gl-runtime")
 
-	seilog.SetLevel("gl-runtime", slog.LevelDebug)
-	lvl, _ := seilog.GetLevel("gl-runtime")
+	paxlog.SetLevel("gl-runtime", slog.LevelDebug)
+	lvl, _ := paxlog.GetLevel("gl-runtime")
 	if lvl != slog.LevelDebug {
 		t.Errorf("expected Debug, got %s", lvl)
 	}
 
-	seilog.SetLevel("gl-runtime", slog.LevelError)
-	lvl, _ = seilog.GetLevel("gl-runtime")
+	paxlog.SetLevel("gl-runtime", slog.LevelError)
+	lvl, _ = paxlog.GetLevel("gl-runtime")
 	if lvl != slog.LevelError {
 		t.Errorf("expected Error, got %s", lvl)
 	}
 }
 
 func TestGetLevel_ReflectsSetDefaultLevel(t *testing.T) {
-	_ = seilog.NewLogger("gl-default")
+	_ = paxlog.NewLogger("gl-default")
 
-	seilog.SetDefaultLevel(slog.LevelWarn, true)
-	defer seilog.SetDefaultLevel(slog.LevelInfo, true)
+	paxlog.SetDefaultLevel(slog.LevelWarn, true)
+	defer paxlog.SetDefaultLevel(slog.LevelInfo, true)
 
-	lvl, ok := seilog.GetLevel("gl-default")
+	lvl, ok := paxlog.GetLevel("gl-default")
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -447,11 +447,11 @@ func TestGetLevel_ReflectsSetDefaultLevel(t *testing.T) {
 }
 
 func TestGetLevel_ReflectsGlobSetLevel(t *testing.T) {
-	_ = seilog.NewLogger("gl-glob", "child")
+	_ = paxlog.NewLogger("gl-glob", "child")
 
-	seilog.SetLevel("gl-glob/*", slog.LevelDebug)
+	paxlog.SetLevel("gl-glob/*", slog.LevelDebug)
 
-	lvl, ok := seilog.GetLevel("gl-glob/child")
+	lvl, ok := paxlog.GetLevel("gl-glob/child")
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -465,10 +465,10 @@ func TestGetLevel_ReflectsGlobSetLevel(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestSetDefaultLevel_AffectsNewLoggers(t *testing.T) {
-	seilog.SetDefaultLevel(slog.LevelWarn, false)
-	defer seilog.SetDefaultLevel(slog.LevelInfo, false) // restore
+	paxlog.SetDefaultLevel(slog.LevelWarn, false)
+	defer paxlog.SetDefaultLevel(slog.LevelInfo, false) // restore
 
-	log := seilog.NewLogger("default-test")
+	log := paxlog.NewLogger("default-test")
 	if log.Enabled(nil, slog.LevelInfo) {
 		t.Error("expected Info disabled when default is Warn")
 	}
@@ -478,10 +478,10 @@ func TestSetDefaultLevel_AffectsNewLoggers(t *testing.T) {
 }
 
 func TestSetDefaultLevel_UpdateExisting(t *testing.T) {
-	log := seilog.NewLogger("default-existing")
+	log := paxlog.NewLogger("default-existing")
 
-	seilog.SetDefaultLevel(slog.LevelError, true)
-	defer seilog.SetDefaultLevel(slog.LevelInfo, true) // restore
+	paxlog.SetDefaultLevel(slog.LevelError, true)
+	defer paxlog.SetDefaultLevel(slog.LevelInfo, true) // restore
 
 	if log.Enabled(nil, slog.LevelWarn) {
 		t.Error("expected Warn disabled after SetDefaultLevel(Error, true)")
@@ -492,14 +492,14 @@ func TestSetDefaultLevel_UpdateExisting(t *testing.T) {
 }
 
 func TestSetDefaultLevel_NoUpdateExisting(t *testing.T) {
-	log := seilog.NewLogger("default-no-update")
+	log := paxlog.NewLogger("default-no-update")
 
 	// Set exact level first.
-	seilog.SetLevel("default-no-update", slog.LevelDebug)
+	paxlog.SetLevel("default-no-update", slog.LevelDebug)
 
 	// Change default without updating existing.
-	seilog.SetDefaultLevel(slog.LevelError, false)
-	defer seilog.SetDefaultLevel(slog.LevelInfo, false)
+	paxlog.SetDefaultLevel(slog.LevelError, false)
+	defer paxlog.SetDefaultLevel(slog.LevelInfo, false)
 
 	// Existing logger should still be at Debug.
 	if !log.Enabled(nil, slog.LevelDebug) {
@@ -512,10 +512,10 @@ func TestSetDefaultLevel_NoUpdateExisting(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestListLoggers_ContainsCreated(t *testing.T) {
-	_ = seilog.NewLogger("list-test1")
-	_ = seilog.NewLogger("list-test2", "sub")
+	_ = paxlog.NewLogger("list-test1")
+	_ = paxlog.NewLogger("list-test2", "sub")
 
-	loggers := seilog.ListLoggers()
+	loggers := paxlog.ListLoggers()
 	has := func(name string) bool {
 		for _, n := range loggers {
 			if n == name {
@@ -534,11 +534,11 @@ func TestListLoggers_ContainsCreated(t *testing.T) {
 }
 
 func TestListLoggers_NoDuplicates(t *testing.T) {
-	_ = seilog.NewLogger("dup-test")
-	_ = seilog.NewLogger("dup-test")
+	_ = paxlog.NewLogger("dup-test")
+	_ = paxlog.NewLogger("dup-test")
 
 	count := 0
-	for _, name := range seilog.ListLoggers() {
+	for _, name := range paxlog.ListLoggers() {
 		if name == "dup-test" {
 			count++
 		}
@@ -553,8 +553,8 @@ func TestListLoggers_NoDuplicates(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestLevelFiltering_InfoEnabledByDefault(t *testing.T) {
-	seilog.SetDefaultLevel(slog.LevelInfo, false)
-	log := seilog.NewLogger("filter-info")
+	paxlog.SetDefaultLevel(slog.LevelInfo, false)
+	log := paxlog.NewLogger("filter-info")
 
 	if !log.Enabled(nil, slog.LevelInfo) {
 		t.Error("Info should be enabled at default Info level")
@@ -571,22 +571,22 @@ func TestLevelFiltering_InfoEnabledByDefault(t *testing.T) {
 }
 
 func TestLevelFiltering_RuntimeChange(t *testing.T) {
-	log := seilog.NewLogger("filter-runtime")
+	log := paxlog.NewLogger("filter-runtime")
 
 	// Start at Info.
-	seilog.SetLevel("filter-runtime", slog.LevelInfo)
+	paxlog.SetLevel("filter-runtime", slog.LevelInfo)
 	if log.Enabled(nil, slog.LevelDebug) {
 		t.Error("Debug should be disabled at Info")
 	}
 
 	// Switch to Debug.
-	seilog.SetLevel("filter-runtime", slog.LevelDebug)
+	paxlog.SetLevel("filter-runtime", slog.LevelDebug)
 	if !log.Enabled(nil, slog.LevelDebug) {
 		t.Error("Debug should be enabled after switching to Debug")
 	}
 
 	// Switch to Error.
-	seilog.SetLevel("filter-runtime", slog.LevelError)
+	paxlog.SetLevel("filter-runtime", slog.LevelError)
 	if log.Enabled(nil, slog.LevelWarn) {
 		t.Error("Warn should be disabled at Error level")
 	}
@@ -611,7 +611,7 @@ func TestOutput_JSONFormat(t *testing.T) {
 
 	// We can't change the global handler, but we CAN verify the logger
 	// attribute is present by inspecting what slog writes. Create a
-	// standalone slog.Logger with the same pattern seilog uses internally.
+	// standalone slog.Logger with the same pattern paxlog uses internally.
 	var buf bytes.Buffer
 	h := slog.NewJSONHandler(&buf, nil)
 	log := slog.New(h).With("logger", "myapp/db")
@@ -638,8 +638,8 @@ func TestOutput_LoggerAttrInOutput(t *testing.T) {
 	// Verify that the "logger" attribute set by NewLogger contains the
 	// full hierarchical name. We do this by checking ListLoggers since
 	// we can't easily intercept the global handler's output.
-	_ = seilog.NewLogger("output-test", "api", "v2")
-	loggers := seilog.ListLoggers()
+	_ = paxlog.NewLogger("output-test", "api", "v2")
+	loggers := paxlog.ListLoggers()
 	found := false
 	for _, n := range loggers {
 		if n == "output-test/api/v2" {
@@ -693,7 +693,7 @@ func TestConcurrent_NewLogger(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			// All goroutines create the same logger — tests the double-checked lock.
-			log := seilog.NewLogger("concurrent-create")
+			log := paxlog.NewLogger("concurrent-create")
 			if log == nil {
 				t.Error("NewLogger returned nil")
 			}
@@ -703,7 +703,7 @@ func TestConcurrent_NewLogger(t *testing.T) {
 
 	// Should only have one entry in the registry.
 	count := 0
-	for _, name := range seilog.ListLoggers() {
+	for _, name := range paxlog.ListLoggers() {
 		if name == "concurrent-create" {
 			count++
 		}
@@ -714,7 +714,7 @@ func TestConcurrent_NewLogger(t *testing.T) {
 }
 
 func TestConcurrent_SetLevelWhileLogging(t *testing.T) {
-	log := seilog.NewLogger("concurrent-level")
+	log := paxlog.NewLogger("concurrent-level")
 
 	var wg sync.WaitGroup
 
@@ -736,9 +736,9 @@ func TestConcurrent_SetLevelWhileLogging(t *testing.T) {
 		defer wg.Done()
 		for j := 0; j < 1000; j++ {
 			if j%2 == 0 {
-				seilog.SetLevel("concurrent-level", slog.LevelDebug)
+				paxlog.SetLevel("concurrent-level", slog.LevelDebug)
 			} else {
-				seilog.SetLevel("concurrent-level", slog.LevelError)
+				paxlog.SetLevel("concurrent-level", slog.LevelError)
 			}
 		}
 	}()
@@ -748,9 +748,9 @@ func TestConcurrent_SetLevelWhileLogging(t *testing.T) {
 }
 
 func TestConcurrent_SetLevelGlobWhileLogging(t *testing.T) {
-	_ = seilog.NewLogger("conglob", "a")
-	_ = seilog.NewLogger("conglob", "b")
-	log := seilog.NewLogger("conglob", "c")
+	_ = paxlog.NewLogger("conglob", "a")
+	_ = paxlog.NewLogger("conglob", "b")
+	log := paxlog.NewLogger("conglob", "c")
 
 	var wg sync.WaitGroup
 
@@ -766,8 +766,8 @@ func TestConcurrent_SetLevelGlobWhileLogging(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 100; i++ {
-			seilog.SetLevel("conglob/*", slog.LevelDebug)
-			seilog.SetLevel("conglob/*", slog.LevelWarn)
+			paxlog.SetLevel("conglob/*", slog.LevelDebug)
+			paxlog.SetLevel("conglob/*", slog.LevelWarn)
 		}
 	}()
 
@@ -781,7 +781,7 @@ func TestConcurrent_ListLoggersWhileCreating(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = seilog.NewLogger("list-concurrent")
+			_ = paxlog.NewLogger("list-concurrent")
 		}()
 	}
 
@@ -789,7 +789,7 @@ func TestConcurrent_ListLoggersWhileCreating(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = seilog.ListLoggers()
+			_ = paxlog.ListLoggers()
 		}()
 	}
 
@@ -801,22 +801,22 @@ func TestConcurrent_ListLoggersWhileCreating(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestSetLevel_QuestionMarkGlob(t *testing.T) {
-	_ = seilog.NewLogger("qm", "a")
-	_ = seilog.NewLogger("qm", "b")
-	_ = seilog.NewLogger("qm", "ab") // should NOT match qm/?
+	_ = paxlog.NewLogger("qm", "a")
+	_ = paxlog.NewLogger("qm", "b")
+	_ = paxlog.NewLogger("qm", "ab") // should NOT match qm/?
 
-	n := seilog.SetLevel("qm/?", slog.LevelDebug)
+	n := paxlog.SetLevel("qm/?", slog.LevelDebug)
 	if n != 2 {
 		t.Errorf("expected 2 matches for qm/?, got %d", n)
 	}
 }
 
 func TestSetLevel_BracketGlob(t *testing.T) {
-	_ = seilog.NewLogger("br", "x")
-	_ = seilog.NewLogger("br", "y")
-	_ = seilog.NewLogger("br", "z")
+	_ = paxlog.NewLogger("br", "x")
+	_ = paxlog.NewLogger("br", "y")
+	_ = paxlog.NewLogger("br", "z")
 
-	n := seilog.SetLevel("br/[xy]", slog.LevelDebug)
+	n := paxlog.SetLevel("br/[xy]", slog.LevelDebug)
 	if n != 2 {
 		t.Errorf("expected 2 matches for br/[xy], got %d", n)
 	}
@@ -827,11 +827,11 @@ func TestSetLevel_BracketGlob(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestListLoggers_Sorted(t *testing.T) {
-	_ = seilog.NewLogger("sort-c")
-	_ = seilog.NewLogger("sort-a")
-	_ = seilog.NewLogger("sort-b")
+	_ = paxlog.NewLogger("sort-c")
+	_ = paxlog.NewLogger("sort-a")
+	_ = paxlog.NewLogger("sort-b")
 
-	loggers := seilog.ListLoggers()
+	loggers := paxlog.ListLoggers()
 
 	// Extract only our test loggers.
 	var ours []string
@@ -862,7 +862,7 @@ func TestListLoggers_Sorted(t *testing.T) {
 func TestSetLevel_StarWithEmpty(t *testing.T) {
 	// This tests the "*" special case. It operates on the full registry
 	// which has loggers from other tests, but at minimum it should not panic.
-	n := seilog.SetLevel("*", slog.LevelInfo)
+	n := paxlog.SetLevel("*", slog.LevelInfo)
 	if n < 0 {
 		t.Error("SetLevel('*') returned negative")
 	}
@@ -873,8 +873,8 @@ func TestSetLevel_StarWithEmpty(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestSetDefaultLevel_ThenSetLevel_Override(t *testing.T) {
-	seilog.SetDefaultLevel(slog.LevelInfo, false)
-	log := seilog.NewLogger("override-test")
+	paxlog.SetDefaultLevel(slog.LevelInfo, false)
+	log := paxlog.NewLogger("override-test")
 
 	// Logger starts at Info.
 	if log.Enabled(nil, slog.LevelDebug) {
@@ -882,19 +882,19 @@ func TestSetDefaultLevel_ThenSetLevel_Override(t *testing.T) {
 	}
 
 	// Override just this logger.
-	seilog.SetLevel("override-test", slog.LevelDebug)
+	paxlog.SetLevel("override-test", slog.LevelDebug)
 	if !log.Enabled(nil, slog.LevelDebug) {
 		t.Error("Debug should be enabled after per-logger override")
 	}
 
 	// SetDefaultLevel without update should not affect this logger.
-	seilog.SetDefaultLevel(slog.LevelError, false)
+	paxlog.SetDefaultLevel(slog.LevelError, false)
 	if !log.Enabled(nil, slog.LevelDebug) {
 		t.Error("Debug should still be enabled — default change was without update")
 	}
 
 	// Cleanup.
-	seilog.SetDefaultLevel(slog.LevelInfo, false)
+	paxlog.SetDefaultLevel(slog.LevelInfo, false)
 }
 
 // --------------------------------------------------------------------------
@@ -902,8 +902,8 @@ func TestSetDefaultLevel_ThenSetLevel_Override(t *testing.T) {
 // --------------------------------------------------------------------------
 
 func TestSmoke_AllLevels(t *testing.T) {
-	log := seilog.NewLogger("smoke")
-	seilog.SetLevel("smoke", slog.LevelDebug)
+	log := paxlog.NewLogger("smoke")
+	paxlog.SetLevel("smoke", slog.LevelDebug)
 
 	// None of these should panic.
 	log.Debug("debug message", "key", "value")
@@ -913,19 +913,19 @@ func TestSmoke_AllLevels(t *testing.T) {
 }
 
 func TestSmoke_WithAttrs(t *testing.T) {
-	log := seilog.NewLogger("smoke-with")
+	log := paxlog.NewLogger("smoke-with")
 	child := log.With("request-id", "abc-123")
 	child.Info("handled request", "status", 200)
 }
 
 func TestSmoke_WithGroup(t *testing.T) {
-	log := seilog.NewLogger("smoke-group")
+	log := paxlog.NewLogger("smoke-group")
 	child := log.WithGroup("http")
 	child.Info("request", "method", "GET", "path", "/api")
 }
 
 func TestSmoke_LogAttrs(t *testing.T) {
-	log := seilog.NewLogger("smoke-logattrs")
+	log := paxlog.NewLogger("smoke-logattrs")
 	log.LogAttrs(nil, slog.LevelInfo, "typed",
 		slog.String("method", "POST"),
 		slog.Int("status", 201),

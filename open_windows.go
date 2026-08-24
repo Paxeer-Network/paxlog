@@ -1,6 +1,6 @@
 //go:build windows
 
-package seilog
+package paxlog
 
 // O_NOFOLLOW is not available on Windows; symlink-following prevention
 // is not applicable on this platform.
